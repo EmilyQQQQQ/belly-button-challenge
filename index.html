@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Bellybutton Biodiversity</title>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+</head>
+
+<body>
+
+  <div class="container">
+    <div class="row">
+      <div class="col-md-12 jumbotron text-center">
+        <h1>Belly Button Biodiversity Dashboard</h1>
+        <p>Use the interactive charts below to explore the dataset</p>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-2">
+        <div class="well">
+          <h5>Test Subject ID No.:</h5>
+          <select id="selDataset" onchange="optionChanged(this.value)"></select>
+        </div>
+        <div class="panel panel-primary">
+          <div class="panel-heading">
+            <h3 class="panel-title">Demographic Info</h3>
+          </div>
+          <div id="sample-metadata" class="panel-body"></div>
+        </div>
+      </div>
+      <div class="col-md-5">
+        <div id="bar"></div>
+      </div>
+      <div class="col-md-5">
+        <div id="gauge"></div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-12">
+        <div id="bubble"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+  <script>
+    // Use D3 to fetch and handle JSON data
+    d3.json("https://2u-data-curriculum-team.s3.amazonaws.com/dataviz-classroom/v1.1/14-Interactive-Web-Visualizations/02-Homework/samples.json").then(function(data) {
+      // Populate the dropdown menu with Test Subject IDs
+      var dropdown = d3.select("#selDataset");
+      data.names.forEach(function(name) {
+        dropdown.append("option").text(name).property("value", name);
+      });
+
+      // Initial charts with the first Test Subject ID
+      updateCharts(data.names[0], data);
+
+    }).catch(function(error) {
+      // Handle any errors that occur during the fetch
+      console.error("Error loading data:", error);
+    });
+
+    // Function to update all charts based on selected Test Subject ID
+    function updateCharts(selectedID, data) {
+      // Update the bar chart
+      updateBarChart(selectedID, data);
+
+      // Update the gauge chart
+      updateGaugeChart(selectedID, data);
+
+      // Update the bubble chart
+      updateBubbleChart(selectedID, data);
+
+      // Update the sample metadata
+      updateMetadata(selectedID, data);
+    }
+
+    // Function to update the bar chart based on selected Test Subject ID
+    function updateBarChart(selectedID, data) {
+      var selectedSample = data.samples.find(sample => sample.id === selectedID);
+
+      // Take the top 10 OTUs
+      var top10Values = selectedSample.sample_values.slice(0, 10);
+      var top10Labels = selectedSample.otu_ids.slice(0, 10).map(id => `OTU ${id}`);
+      var top10HoverText = selectedSample.otu_labels.slice(0, 10);
+
+      // Create the bar chart
+      var trace1 = {
+        x: top10Values,
+        y: top10Labels,
+        type: "bar",
+        orientation: "h",
+        text: top10HoverText
+      };
+
+      var layout = {
+        title: `Top 10 OTUs for Test Subject ${selectedID}`,
+        xaxis: { title: "Sample Values" },
+        yaxis: { title: "OTU IDs" }
+      };
+
+      Plotly.newPlot("bar", [trace1], layout);
+    }
+
+    // Function to update the gauge chart based on selected Test Subject ID
+    function updateGaugeChart(selectedID, data) {
+      var selectedMetadata = data.metadata.find(metadata => metadata.id == selectedID);
+
+      // Create the gauge chart
+      var trace3 = {
+        type: "indicator",
+        mode: "gauge+number",
+        value: selectedMetadata.wfreq,
+        title: { text: "Belly Button Washing Frequency<br>Scrubs per Week" },
+        gauge: {
+          axis: { range: [0, 9], tickvals: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] },
+          steps: [
+            { range: [0, 1], color: "rgba(255, 255, 255, 0)" },
+            { range: [1, 2], color: "rgba(232, 226, 202, .5)" },
+            { range: [2, 3], color: "rgba(210, 206, 145, .5)" },
+            { range: [3, 4], color: "rgba(202, 209, 95, .5)" },
+            { range: [4, 5], color: "rgba(170, 202, 42, .5)" },
+            { range: [5, 6], color: "rgba(110, 154, 22, .5)" },
+            { range: [6, 7], color: "rgba(14, 127, 0, .5)" },
+            { range: [7, 8], color: "rgba(10, 120, 22, .5)" },
+            { range: [8, 9], color: "rgba(0, 105, 11, .5)" },
+          ],
+        }
+      };
+
+      var layout3 = { width: 400, height: 300, margin: { t: 0, b: 0 } };
+      Plotly.newPlot("gauge", [trace3], layout3);
+    }
+
+    // Function to update the bubble chart based on selected Test Subject ID
+    function updateBubbleChart(selectedID, data) {
+      var selectedSample = data.samples.find(sample => sample.id === selectedID);
+
+      // Create the bubble chart
+      var trace2 = {
+        x: selectedSample.otu_ids,
+        y: selectedSample.sample_values,
+        mode: 'markers',
+        marker: {
+          size: selectedSample.sample_values,
+          color: selectedSample.otu_ids,
+          colorscale: 'Earth'
+        },
+        text: selectedSample.otu_labels
+      };
+
+      var layout2 = {
+        title: `Bubble Chart for Test Subject ${selectedID}`,
+        xaxis: { title: "OTU IDs" },
+        yaxis: { title: "Sample Values" }
+      };
+
+      Plotly.newPlot("bubble", [trace2], layout2);
+    }
+
+    // Function to update the sample metadata based on selected Test Subject ID
+    function updateMetadata(selectedID, data) {
+      var selectedMetadata = data.metadata.find(metadata => metadata.id == selectedID);
+
+      // Clear existing metadata
+      d3.select("#sample-metadata").html("");
+
+      // Append key-value pairs to the sample metadata panel
+      Object.entries(selectedMetadata).forEach(([key, value]) => {
+        d3.select("#sample-metadata").append("p").text(`${key}: ${value}`);
+      });
+    }
+
+    // Function called when dropdown selection changes
+    function optionChanged(selectedID) {
+      updateCharts(selectedID);
+      // Add additional functions or updates as needed
+    }
+  </script>
+
+  <script src="./static/js/app.js"></script>
+  <script src="./static/js/bonus.js"></script>
+
+</body>
+
+</html>
